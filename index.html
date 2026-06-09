@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registro de Invitados - RRDD 26</title>
+    <title>Registro de Invitados - SSAA</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -13,11 +13,11 @@
     <div class="max-w-md w-full mx-auto bg-white min-h-screen shadow-md flex flex-col justify-between">
         
         <header class="bg-indigo-700 text-white p-6 text-center shadow-lg">
-            <h1 class="text-2xl font-bold tracking-wide">RRDD 26</h1>
+            <h1 class="text-2xl font-bold tracking-wide">SSAA</h1>
             <p class="text-indigo-200 text-sm mt-1">Confirmación y Gestión de Invitados</p>
         </header>
 
-        <div id="pantaya-login" class="p-6 flex-grow flex flex-col justify-center items-center">
+        <div id="pantalla-login" class="p-6 flex-grow flex flex-col justify-center items-center">
             <div class="w-full space-y-4">
                 <div class="text-center mb-6">
                     <p class="text-gray-600 font-medium">Introduce tu DNI/NIE para acceder a tus invitaciones</p>
@@ -72,7 +72,7 @@
                         </div>
                         <div class="ml-3 text-xs">
                             <label for="check-lopd" class="font-medium text-gray-700 cursor-pointer select-none">
-                                Acepto el tratamiento de los datos facilitados exclusivamente para la gestión de confirmaciones, control de accesos y organización del RRDD 26 de conformidad con la LOPDGDD y el RGPD.
+                                Acepto el tratamiento de los datos facilitados exclusivamente para la gestión de confirmaciones, control de accesos y organización de SSAA de conformidad con la LOPDGDD y el RGPD.
                             </label>
                         </div>
                     </div>
@@ -85,7 +85,7 @@
         </div>
 
         <footer class="p-4 bg-gray-50 text-center border-t border-gray-200">
-            <p class="text-xs text-gray-400 font-medium">© 2026 Organización RRDD 26</p>
+            <p class="text-xs text-gray-400 font-medium">© 2026 Organización SSAA</p>
         </footer>
     </div>
 
@@ -152,7 +152,7 @@
                 
                 await cargarInvitadosExistentes();
 
-                document.getElementById('pantaya-login').classList.add('hidden');
+                document.getElementById('pantalla-login').classList.add('hidden');
                 document.getElementById('pantalla-formulario').classList.remove('hidden');
                 Swal.close();
 
@@ -294,7 +294,7 @@
                 const idReg = card.dataset.idRegistro;
 
                 if (card.classList.contains('para-borrar-registro')) {
-                    if(idReg && idReg !== "nuevo") idsParaBorrar.push(idReg);
+                    if(idReg && idReg !== "nuevo" && idReg !== "") idsParaBorrar.push(idReg);
                     continue;
                 }
 
@@ -328,8 +328,6 @@
                         zona_discapacidad: requiereZonaAdaptadaGrupo
                     };
 
-                    // SOLUCIÓN TOTAL: Si es un registro previo, conservamos su ID única.
-                    // Si es nuevo ("nuevo" o vacío), eliminamos la clave "id" para que Supabase la asigne automáticamente sin romper restricciones de nulos.
                     if (idReg && idReg !== "nuevo" && idReg !== "") {
                         estructuraAcompanante.id = idReg;
                     }
