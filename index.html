@@ -17,6 +17,7 @@
             <p class="text-indigo-200 text-sm mt-1">Confirmación y Gestión de Invitados</p>
         </header>
 
+        <!-- PANTALLA LOGIN -->
         <div id="pantalla-login" class="p-6 flex-grow flex flex-col justify-center items-center">
             <div class="w-full space-y-4">
                 <div class="text-center mb-6">
@@ -32,6 +33,7 @@
             </div>
         </div>
 
+        <!-- PANTALLA FORMULARIO -->
         <div id="pantalla-formulario" class="p-6 flex-grow hidden space-y-6">
             <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
                 <span class="text-xs uppercase font-bold text-indigo-500 tracking-wider">Titular Autorizado</span>
@@ -43,14 +45,17 @@
 
             <form id="form-invitados" onsubmit="guardarDatos(event)" class="space-y-6">
                 
+                <!-- Contenedor donde se inyectarán dinámicamente los invitados familiares -->
                 <div id="lista-invitados" class="space-y-4"></div>
 
+                <!-- BOTÓN DINÁMICO: Añadir invitados ilimitados -->
                 <div class="flex justify-center pt-2">
                     <button type="button" onclick="crearTarjetaInvitadoVacia()" class="w-full border-2 border-dashed border-indigo-400 text-indigo-800 bg-indigo-50/60 font-bold p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors text-sm shadow-sm">
                         <span>➕ Añadir Acompañante / Familiar</span>
                     </button>
                 </div>
 
+                <!-- CHECKBOX: Movilidad Reducida acotado a todo el bloque familiar -->
                 <div class="bg-blue-50 p-4 rounded-xl border border-blue-200 mt-4">
                     <div class="flex items-start">
                         <div class="flex items-center h-5">
@@ -65,6 +70,7 @@
                     </div>
                 </div>
 
+                <!-- CHECKBOX: Protección de datos obligatorio -->
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                     <div class="flex items-start">
                         <div class="flex items-center h-5">
@@ -355,9 +361,10 @@
                 }
 
                 if (listaParaUpsert.length > 0) {
+                    // "onConflict" gestiona que si el DNI del invitado ya existe para ese titular, lo actualice en lugar de reventar.
                     const { error: upsertError } = await _supabase
                         .from('invitados')
-                        .upsert(listaParaUpsert);
+                        .upsert(listaParaUpsert, { onConflict: 'titular_dni, dni' });
                     
                     if (upsertError) throw upsertError;
                 }
