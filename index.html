@@ -37,7 +37,7 @@
                 <span class="text-xs uppercase font-bold text-indigo-500 tracking-wider">Titular Autorizado</span>
                 <h2 id="nombre-titular" class="text-xl font-bold text-gray-800">Cargando...</h2>
                 <p class="text-xs text-gray-600 mt-2 font-medium leading-relaxed">
-                    Añade a los miembros de tu unidad familiar y acompañantes que asistirán contigo al evento. Si dispones de alguna invitación adicional cedida por un compañero, puedes pulsar en añadir para registrarla.
+                    Añade a los miembros de tu unidad familiar y acompañantes que asistirán contigo al evento (dispones de 2 invitaciones estándar; las adicionales a partir de la 3ª requerirán indicar el origen de la cesión).
                 </p>
             </div>
 
@@ -98,7 +98,6 @@
         let contadorIndicesDinamicos = 0;
 
         function validarDocumentoIdentidad(documento) {
-            // 1. Comprobar si tiene formato estándar de DNI/NIE español
             const regexEspañol = /^[XYZ\d]\d{7}[A-Z]$/i;
             if (regexEspañol.test(documento)) {
                 let stringDni = documento.toUpperCase();
@@ -115,8 +114,6 @@
                 return letraIntroducida === letraCorrecta;
             }
 
-            // 2. Si no es DNI/NIE español, asumimos que es Pasaporte o documento extranjero.
-            // Validamos que sea un texto alfanumérico válido de entre 6 y 20 caracteres (letras y números).
             const regexExtranjero = /^[A-Z0-9]{6,20}$/i;
             return regexExtranjero.test(documento);
         }
@@ -208,6 +205,7 @@
 
             const tratamientoActual = datos?.tratamiento || "";
             const parentescoActual = datos?.parentesco || "";
+            const observacionesActual = datos?.observaciones || "";
 
             card.innerHTML = `
                 <div class="flex justify-between items-center border-b pb-2 mb-2 border-gray-200">
@@ -241,6 +239,12 @@
                         <option value="Hermano/a" ${parentescoActual === 'Hermano/a' ? 'selected' : ''}>Hermano/a</option>
                         <option value="Otros" ${parentescoActual === 'Otros' ? 'selected' : ''}>Otro</option>
                     </select>
+
+                    <!-- Campo dinámico para la 3ª invitación en adelante -->
+                    <div class="contenedor-observaciones hidden pt-2 border-t border-indigo-200 mt-2">
+                        <label class="block text-[11px] font-bold text-indigo-700 uppercase tracking-wider mb-1 ml-1">⚠️ Invitación Extra / Cedida</label>
+                        <input type="text" placeholder="Ej: Cedida por Alumno [Nombre y DNI]" class="inv-observaciones w-full p-3 text-sm border-2 border-indigo-300 rounded-lg focus:outline-none bg-indigo-50/50 text-gray-800 font-medium" value="${observacionesActual}">
+                    </div>
                 </div>
             `;
             
@@ -275,10 +279,22 @@
 
             tarjetasVisibles.forEach((card) => {
                 const tituloSpan = card.querySelector('.titulo-tarjeta-prioridad');
+                const contenedorObs = card.querySelector('.contenedor-observaciones');
+
                 if (tituloSpan) {
                     tituloSpan.innerText = `Acompañante ${contador}`;
-                    contador++;
                 }
+
+                if (contenedorObs) {
+                    if (contador > 2) {
+                        contenedorObs.classList.remove('hidden');
+                    } else {
+                        contenedorObs.classList.add('hidden');
+                        const inputObs = card.querySelector('.inv-observaciones');
+                        if(inputObs) inputObs.value = "";
+                    }
+                }
+                contador++;
             });
         }
 
@@ -311,6 +327,8 @@
                 const dni = card.querySelector('.inv-dni').value.trim().toUpperCase();
                 const fechaNac = card.querySelector('.inv-fecha-nacimiento').value;
                 const parentesco = card.querySelector('.inv-parentesco').value;
+                const inputObs = card.querySelector('.inv-observaciones');
+                const observaciones = inputObs ? inputObs.value.trim() : "";
 
                 if (!tratamiento && !nombre && !apellidos && !dni && !fechaNac && !parentesco) {
                     continue;
@@ -328,6 +346,12 @@
                     return;
                 }
 
+                // Exigir observaciones si es la 3ª tarjeta o superior
+                if (indexVisual > 2 && !observaciones) {
+                    Swal.fire('Observación requerida', `Al superar las 2 invitaciones estándar, el Acompañante ${indexVisual} debe indicar obligatoriamente en las observaciones quién le cede la invitación (Nombre y DNI).`, 'warning');
+                    return;
+                }
+
                 const estructuraAcompanante = {
                     titular_dni: usuarioDni,
                     nombre: nombre,
@@ -336,7 +360,8 @@
                     parentesco: parentesco,
                     tratamiento: tratamiento,
                     fecha_nacimiento: fechaNac,
-                    zona_discapacidad: requiereZonaAdaptadaGrupo
+                    zona_discapacidad: requiereZonaAdaptadaGrupo,
+                    observaciones: observaciones
                 };
 
                 if (idReg && idReg !== "nuevo" && idReg !== "") {
