@@ -361,7 +361,7 @@
                     tratamiento: tratamiento,
                     nombre: nombre,
                     apellidos: apellidos,
-                    dni: null, // Ya no se pide DNI para acompañantes en la cena
+                    dni: null,
                     parentesco: parentesco,
                     fecha_nacimiento: fechaNac,
                     alergias: alergiasAcomp
@@ -383,18 +383,15 @@
                 
                 if (deleteError) throw deleteError;
 
-                const partesNombre = titularNombreCompleto.trim().split(' ');
-                const nombreTitular = partesNombre[0] || "";
-                const apellidosTitular = partesNombre.slice(1).join(' ') || "";
-
+                // Guardamos el nombre completo directamente en la columna 'nombre' para que no se parta mal
                 const registroTitular = {
                     titular_dni: usuarioDni,
                     tipo: 'Titular',
                     asistencia: asistenciaTitular,
                     segundo_plato: platoTitular,
                     tratamiento: 'Sr. D.',
-                    nombre: nombreTitular,
-                    apellidos: apellidosTitular,
+                    nombre: titularNombreCompleto,
+                    apellidos: '', 
                     dni: usuarioDni,
                     parentesco: 'Titular',
                     fecha_nacimiento: null,
