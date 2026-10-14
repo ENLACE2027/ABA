@@ -12,9 +12,9 @@
 
     <div class="max-w-md w-full mx-auto bg-white min-h-screen shadow-md flex flex-col justify-between">
         
-        <header class="bg-indigo-700 text-white p-6 text-center shadow-lg">
+        <header class="bg-rose-900 text-white p-6 text-center shadow-lg">
             <h1 class="text-2xl font-bold tracking-wide">ABA</h1>
-            <p class="text-indigo-200 text-sm mt-1">Confirmación de Asistencia a la Cena</p>
+            <p class="text-rose-200 text-sm mt-1">Confirmación de Asistencia a la Cena</p>
         </header>
 
         <div id="pantalla-login" class="p-6 flex-grow flex flex-col justify-center items-center">
@@ -24,17 +24,17 @@
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tu Documento de Identidad</label>
-                    <input type="text" id="login-dni" placeholder="Ej: 12345678Z" class="w-full p-4 border-2 border-gray-300 rounded-xl text-lg font-semibold uppercase focus:border-indigo-500 focus:outline-none">
+                    <input type="text" id="login-dni" placeholder="Ej: 12345678Z" class="w-full p-4 border-2 border-gray-300 rounded-xl text-lg font-semibold uppercase focus:border-rose-800 focus:outline-none">
                 </div>
-                <button onclick="verificarAcceso()" class="w-full bg-indigo-600 text-white font-bold p-4 rounded-xl shadow-md text-lg">
+                <button onclick="verificarAcceso()" class="w-full bg-rose-900 text-white font-bold p-4 rounded-xl shadow-md text-lg hover:bg-rose-800 transition-colors">
                     Acceder al Formulario
                 </button>
             </div>
         </div>
 
         <div id="pantalla-formulario" class="p-6 flex-grow hidden space-y-6">
-            <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                <span class="text-xs uppercase font-bold text-indigo-500 tracking-wider">Titular Autorizado</span>
+            <div class="bg-rose-50 p-4 rounded-xl border border-rose-100">
+                <span class="text-xs uppercase font-bold text-rose-800 tracking-wider">Titular Autorizado</span>
                 <h2 id="nombre-titular" class="text-xl font-bold text-gray-800">Cargando...</h2>
                 <p class="text-xs text-gray-600 mt-2 font-medium leading-relaxed">
                     Indica tu asistencia y añade los datos de tus acompañantes junto con las alergias e intolerancias para la cena.
@@ -45,7 +45,7 @@
                 
                 <!-- Datos del Titular para la cena -->
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
-                    <span class="text-xs uppercase font-extrabold tracking-wider text-indigo-600">Tus datos para la cena</span>
+                    <span class="text-xs uppercase font-extrabold tracking-wider text-rose-900">Tus datos para la cena</span>
                     
                     <div>
                         <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">¿Asistirás a la cena?</label>
@@ -65,7 +65,7 @@
                 <div id="lista-acompanantes-cena" class="space-y-4"></div>
 
                 <div class="flex justify-center pt-2">
-                    <button type="button" onclick="crearTarjetaAcompananteCenaVacia()" class="w-full border-2 border-dashed border-indigo-400 text-indigo-800 bg-indigo-50/60 font-bold p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors text-sm shadow-sm">
+                    <button type="button" onclick="crearTarjetaAcompananteCenaVacia()" class="w-full border-2 border-dashed border-rose-400 text-rose-900 bg-rose-50/60 font-bold p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-rose-100 transition-colors text-sm shadow-sm">
                         <span>➕ Añadir Acompañante a la Cena</span>
                     </button>
                 </div>
@@ -73,7 +73,7 @@
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
                     <div class="flex items-start">
                         <div class="flex items-center h-5">
-                            <input id="check-lopd" type="checkbox" class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                            <input id="check-lopd" type="checkbox" class="w-5 h-5 text-rose-900 border-gray-300 rounded focus:ring-rose-800 cursor-pointer">
                         </div>
                         <div class="ml-3 text-xs">
                             <label for="check-lopd" class="font-medium text-gray-700 cursor-pointer select-none">
@@ -83,7 +83,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-green-600 text-white font-bold p-4 rounded-xl shadow-lg text-lg">
+                <button type="submit" class="w-full bg-green-600 text-white font-bold p-4 rounded-xl shadow-lg text-lg hover:bg-green-700 transition-colors">
                     Guardar y Confirmar Cena
                 </button>
             </form>
@@ -177,7 +177,6 @@
             container.innerHTML = "";
             contadorIndicesDinamicos = 0;
 
-            // Cargamos todos los registros de este titular en la tabla 'cena'
             const { data: registros } = await _supabase
                 .from('cena')
                 .select('*')
@@ -225,7 +224,7 @@
             card.innerHTML = `
                 <div class="flex justify-between items-center border-b pb-2 mb-2 border-gray-200">
                     <div class="flex items-center gap-2">
-                        <span class="titulo-tarjeta-prioridad text-xs uppercase font-extrabold tracking-wider text-indigo-600">Acompañante ${contadorIndicesDinamicos}</span>
+                        <span class="titulo-tarjeta-prioridad text-xs uppercase font-extrabold tracking-wider text-rose-900">Acompañante ${contadorIndicesDinamicos}</span>
                     </div>
                     <button type="button" onclick="eliminarTarjetaAcompanante(this)" class="text-red-500 font-bold text-xs bg-red-50 px-2 py-1 rounded-lg border border-red-200 hover:bg-red-100 transition-colors">Eliminar</button>
                 </div>
@@ -334,7 +333,6 @@
                     return;
                 }
 
-                // Estructura del acompañante para la tabla única
                 listaNuevosRegistros.push({
                     titular_dni: usuarioDni,
                     tipo: 'Acompañante',
@@ -357,7 +355,6 @@
             Swal.fire({ title: 'Sincronizando con el servidor...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
 
             try {
-                // 1. Borramos todos los registros anteriores de este titular en la tabla 'cena' para refrescar limpio
                 const { error: deleteError } = await _supabase
                     .from('cena')
                     .delete()
@@ -365,8 +362,6 @@
                 
                 if (deleteError) throw deleteError;
 
-                // 2. Preparamos el registro del propio titular
-                // Extraemos nombre y apellidos del titular guardado o usando un desglose básico
                 const partesNombre = titularNombreCompleto.trim().split(' ');
                 const nombreTitular = partesNombre[0] || "";
                 const apellidosTitular = partesNombre.slice(1).join(' ') || "";
@@ -384,10 +379,8 @@
                     alergias: alergiasTitular
                 };
 
-                // Juntamos el titular y sus acompañantes en un solo array
                 const registrosFinales = [registroTitular, ...listaNuevosRegistros];
 
-                // 3. Insertamos todo de golpe en la tabla única 'cena'
                 const { error: insertError } = await _supabase
                     .from('cena')
                     .insert(registrosFinales);
@@ -398,7 +391,7 @@
                     title: '¡Guardado con éxito!',
                     text: 'Tus datos y los de tus acompañantes para la cena se han registrado correctamente en la base de datos.',
                     icon: 'success',
-                    confirmButtonColor: '#4f46e5'
+                    confirmButtonColor: '#881337'
                 }).then(async () => {
                     await cargarDatosCenaExistentes();
                 });
