@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmación Cena - ABA</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen flex flex-col justify-between">
+
+    <div class="max-w-md w-full mx-auto bg-white min-h-screen shadow-md flex flex-col justify-between">
+        
+        <header class="bg-indigo-700 text-white p-6 text-center shadow-lg">
+            <h1 class="text-2xl font-bold tracking-wide">ABA</h1>
+            <p class="text-indigo-200 text-sm mt-1">Confirmación de Asistencia a la Cena</p>
+        </header>
+
+        <div id="pantalla-login" class="p-6 flex-grow flex flex-col justify-center items-center">
+            <div class="w-full space-y-4">
+                <div class="text-center mb-6">
+                    <p class="text-gray-600 font-medium">Introduce tu DNI/NIE o Pasaporte para confirmar tu asistencia a la cena</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tu Documento de Identidad</label>
+                    <input type="text" id="login-dni" placeholder="Ej: 12345678Z" class="w-full p-4 border-2 border-gray-300 rounded-xl text-lg font-semibold uppercase focus:border-indigo-500 focus:outline-none">
+                </div>
+                <button onclick="verificarAcceso()" class="w-full bg-indigo-600 text-white font-bold p-4 rounded-xl shadow-md text-lg">
+                    Acceder al Formulario
+                </button>
+            </div>
+        </div>
+
+        <div id="pantalla-formulario" class="p-6 flex-grow hidden space-y-6">
+            <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                <span class="text-xs uppercase font-bold text-indigo-500 tracking-wider">Titular Autorizado</span>
+                <h2 id="nombre-titular" class="text-xl font-bold text-gray-800">Cargando...</h2>
+                <p class="text-xs text-gray-600 mt-2 font-medium leading-relaxed">
+                    Indica si asistirás y añade los datos de tus acompañantes junto con sus alergias e intolerancias para la cena. (Dispones de hasta 2 invitaciones).
+                </p>
+            </div>
+
+            <form id="form-cena" onsubmit="guardarDatosCena(event)" class="space-y-6">
+                
+                <!-- Datos del Titular para la cena -->
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                    <span class="text-xs uppercase font-extrabold tracking-wider text-indigo-600">Tus datos para la cena</span>
+                    
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">¿Asistirás a la cena?</label>
+                        <select id="asistencia-titular" class="w-full p-3 text-sm border rounded-lg bg-white focus:outline-none font-medium text-gray-800">
+                            <option value="SI">Sí, asistiré</option>
+                            <option value="NO">No podré asistir</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Tus alergias o intolerancias</label>
+                        <input type="text" id="alergias-titular" placeholder="Ej: Celíaco, alérgico al marisco..." class="w-full p-3 text-sm border rounded-lg focus:outline-none bg-white">
+                    </div>
+                </div>
+
+                <!-- Lista de acompañantes para la cena -->
+                <div id="lista-acompanantes-cena" class="space-y-4"></div>
+
+                <div class="flex justify-center pt-2">
+                    <button type="button" onclick="crearTarjetaAcompananteCenaVacia()" class="w-full border-2 border-dashed border-indigo-400 text-indigo-800 bg-indigo-50/60 font-bold p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors text-sm shadow-sm">
+                        <span>➕ Añadir Acompañante a la Cena</span>
+                    </button>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="check-lopd" type="checkbox" class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                        </div>
+                        <div class="ml-3 text-xs">
+                            <label for="check-lopd" class="font-medium text-gray-700 cursor-pointer select-none">
+                                Acepto el tratamiento de los datos facilitados exclusivamente para la organización del evento de ABA de conformidad con la LOPDGDD y el RGPD.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 text-white font-bold p-4 rounded-xl shadow-lg text-lg">
+                    Guardar y Confirmar Cena
+                </button>
+            </form>
+        </div>
+
+        <footer class="p-4 bg-gray-50 text-center border-t border-gray-200">
+            <p class="text-xs text-gray-400 font-medium">© 2026 Organización ABA</p>
+        </footer>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://vvgxdneixtrtainoaxzn.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2Z3hkbmVpeHRydGFpbm9heHpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5NTQ3NzYsImV4cCI6MjA5NjUzMDc3Nn0.uVpF67WDU4jBhfYcBao-YUFVDt0bdIXPgbWv2AqnYSM";
+        
+        let _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let usuarioDni = "";
+        let contadorIndicesDinamicos = 0;
+
+        function validarDocumentoIdentidad(documento) {
+            const regexEspañol = /^[XYZ\d]\d{7}[A-Z]$/i;
+            if (regexEspañol.test(documento)) {
+                let stringDni = documento.toUpperCase();
+                stringDni = stringDni
+                    .replace(/^X/, '0')
+                    .replace(/^Y/, '1')
+                    .replace(/^Z/, '2');
+
+                const numero = parseInt(stringDni.substr(0, 8), 10);
+                const letraIntroducida = stringDni.substr(8, 1);
+                const letrasValidas = "TRWAGMYFPDXBNJZSQVHLCKE";
+                const letraCorrecta = letrasValidas.charAt(numero % 23);
+
+                return letraIntroducida === letraCorrecta;
+            }
+
+            const regexExtranjero = /^[A-Z0-9]{6,20}$/i;
+            return regexExtranjero.test(documento);
+        }
+
+        async function verificarAcceso() {
+            const inputDni = document.getElementById('login-dni').value.trim().toUpperCase();
+            
+            if(!inputDni) {
+                Swal.fire('Atención', 'Por favor, escribe tu DNI o pasaporte.', 'warning');
+                return;
+            }
+
+            if (!validarDocumentoIdentidad(inputDni)) {
+                Swal.fire({
+                    title: 'Documento Incorrecto',
+                    text: 'El formato del documento de identidad introducido no es válido.',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444'
+                });
+                return; 
+            }
+
+            Swal.fire({ title: 'Buscando tu registro...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+            try {
+                const { data: titular, error } = await _supabase
+                    .from('titulares')
+                    .select('*')
+                    .eq('DNI', inputDni)
+                    .maybeSingle();
+
+                if (error || !titular) {
+                    Swal.fire('No encontrado', 'El documento introducido es correcto, pero no consta en la lista de autorizados.', 'error');
+                    return;
+                }
+
+                usuarioDni = inputDni;
+                document.getElementById('nombre-titular').innerText = titular["NOMBRE COMPLETO"];
+                
+                await cargarDatosCenaExistentes();
+
+                document.getElementById('pantalla-login').classList.add('hidden');
+                document.getElementById('pantalla-formulario').classList.remove('hidden');
+                Swal.close();
+
+            } catch (err) {
+                console.error(err);
+                Swal.fire('Error', 'Hubo un problema al conectar con el servidor.', 'error');
+            }
+        }
+
+        async function cargarDatosCenaExistentes() {
+            // 1. Cargamos la asistencia general del titular
+            const { data: titularCena } = await _supabase
+                .from('titulares_cena')
+                .select('*')
+                .eq('titular_dni', usuarioDni)
+                .maybeSingle();
+
+            if (titularCena) {
+                document.getElementById('asistencia-titular').value = titularCena.asistencia || 'SI';
+                document.getElementById('alergias-titular').value = titularCena.alergias || '';
+                document.getElementById('check-lopd').checked = true;
+            }
+
+            // 2. Cargamos los acompañantes para la cena
+            const container = document.getElementById('lista-acompanantes-cena');
+            container.innerHTML = "";
+            contadorIndicesDinamicos = 0;
+
+            const { data: acompanantes } = await _supabase
+                .from('invitados_cena')
+                .select('*')
+                .eq('titular_dni', usuarioDni)
+                .order('id', { ascending: true });
+
+            if (acompanantes && acompanantes.length > 0) {
+                acompanantes.forEach(inv => {
+                    crearTarjetaAcompananteEnPantalla(inv);
+                });
+            } else {
+                // Por defecto dejamos una o ninguna, según prefieras
+                crearTarjetaAcompananteCenaVacia();
+            }
+
+            reordenarTitulosVisuales();
+        }
+
+        function crearTarjetaAcompananteCenaVacia() {
+            const tarjetasVisibles = document.querySelectorAll('.tarjeta-dinamica:not(.para-borrar-registro)');
+            if (tarjetasVisibles.length >= 2) {
+                Swal.fire('Límite alcanzado', 'Solo dispones de un máximo de 2 invitaciones.', 'info');
+                return;
+            }
+            crearTarjetaAcompananteEnPantalla(null);
+        }
+
+        function crearTarjetaAcompananteEnPantalla(datos = null) {
+            const container = document.getElementById('lista-acompanantes-cena');
+            const card = document.createElement('div');
+            
+            contadorIndicesDinamicos++;
+            card.className = "p-4 rounded-xl border-2 shadow-sm relative space-y-3 tarjeta-dinamica border-gray-200 bg-gray-50/50";
+            card.dataset.idRegistro = datos ? datos.id : "nuevo";
+
+            const tratamientoActual = datos?.tratamiento || "";
+            const parentescoActual = datos?.parentesco || "";
+
+            card.innerHTML = `
+                <div class="flex justify-between items-center border-b pb-2 mb-2 border-gray-200">
+                    <div class="flex items-center gap-2">
+                        <span class="titulo-tarjeta-prioridad text-xs uppercase font-extrabold tracking-wider text-indigo-600">Acompañante ${contadorIndicesDinamicos}</span>
+                    </div>
+                    <button type="button" onclick="eliminarTarjetaAcompanante(this)" class="text-red-500 font-bold text-xs bg-red-50 px-2 py-1 rounded-lg border border-red-200 hover:bg-red-100 transition-colors">Eliminar</button>
+                </div>
+                
+                <div class="grid grid-cols-1 gap-2">
+                    <select class="inv-tratamiento w-full p-3 text-sm border rounded-lg bg-white focus:outline-none text-gray-500 font-medium">
+                        <option value="" disabled ${tratamientoActual === "" ? "selected" : ""}>Tratamiento</option>
+                        <option value="Sr. D." ${tratamientoActual === 'Sr. D.' ? 'selected' : ''}>Sr. D.</option>
+                        <option value="Sra. Dª." ${tratamientoActual === 'Sra. Dª.' ? 'selected' : ''}>Sra. Dª.</option>
+                    </select>
+
+                    <input type="text" placeholder="Nombre" class="inv-nombre w-full p-3 text-sm border rounded-lg focus:outline-none" value="${datos ? (datos.nombre || '') : ''}">
+                    <input type="text" placeholder="Apellidos" class="inv-apellidos w-full p-3 text-sm border rounded-lg focus:outline-none" value="${datos ? (datos.apellidos || '') : ''}">
+                    <input type="text" placeholder="DNI, NIE o Pasaporte" class="inv-dni w-full p-3 text-sm border rounded-lg uppercase focus:outline-none" value="${datos ? (datos.dni || '') : ''}">
+                    
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Fecha de Nacimiento</label>
+                        <input type="date" class="inv-fecha-nacimiento w-full p-3 text-sm border rounded-lg bg-white focus:outline-none text-gray-700" value="${datos ? (datos.fecha_nacimiento || '') : ''}">
+                    </div>
+
+                    <select class="inv-parentesco w-full p-3 text-sm border rounded-lg bg-white focus:outline-none">
+                        <option value="" disabled ${parentescoActual === "" ? "selected" : ""}>Selecciona parentesco</option>
+                        <option value="Pareja" ${parentescoActual === 'Pareja' ? 'selected' : ''}>Pareja</option>
+                        <option value="Hijo/a" ${parentescoActual === 'Hijo/a' ? 'selected' : ''}>Hijo/a</option>
+                        <option value="Padre/Madre" ${parentescoActual === 'Padre/Madre' ? 'selected' : ''}>Padre/Madre</option>
+                        <option value="Hermano/a" ${parentescoActual === 'Hermano/a' ? 'selected' : ''}>Hermano/a</option>
+                        <option value="Otros" ${parentescoActual === 'Otros' ? 'selected' : ''}>Otro</option>
+                    </select>
+
+                    <input type="text" placeholder="Alergias o intolerancias del acompañante" class="inv-alergias w-full p-3 text-sm border rounded-lg focus:outline-none bg-white" value="${datos ? (datos.alergias || '') : ''}">
+                </div>
+            `;
+            
+            container.appendChild(card);
+            
+            const selectEl = card.querySelector('.inv-tratamiento');
+            selectEl.addEventListener('change', function() {
+                this.classList.remove('text-gray-500');
+                this.classList.add('text-gray-800');
+            });
+            if(tratamientoActual !== "") {
+                selectEl.classList.remove('text-gray-500');
+                selectEl.classList.add('text-gray-800');
+            }
+
+            reordenarTitulosVisuales();
+        }
+
+        function eliminarTarjetaAcompanante(btn) {
+            const card = btn.closest('.tarjeta-dinamica');
+            if(card.dataset.idRegistro === "nuevo" || card.dataset.idRegistro === "") {
+                card.remove();
+            } else {
+                card.classList.add('hidden', 'para-borrar-registro');
+            }
+            reordenarTitulosVisuales();
+        }
+
+        function reordenarTitulosVisuales() {
+            const tarjetasVisibles = document.querySelectorAll('.tarjeta-dinamica:not(.para-borrar-registro)');
+            let contador = 1;
+
+            tarjetasVisibles.forEach((card) => {
+                const tituloSpan = card.querySelector('.titulo-tarjeta-prioridad');
+                if (tituloSpan) {
+                    tituloSpan.innerText = `Acompañante ${contador}`;
+                    contador++;
+                }
+            });
+        }
+
+        async function guardarDatosCena(event) {
+            event.preventDefault();
+
+            const checkLopd = document.getElementById('check-lopd');
+            if (!checkLopd.checked) {
+                Swal.fire('Requisito Legal', 'Para enviar el formulario debes aceptar la cláusula de protección de datos.', 'warning');
+                return;
+            }
+
+            const asistenciaTitular = document.getElementById('asistencia-titular').value;
+            const alergiasTitular = document.getElementById('alergias-titular').value.trim();
+
+            const tarjetas = document.querySelectorAll('.tarjeta-dinamica');
+            const listaParaUpsert = [];
+            const idsParaBorrar = [];
+            let indexVisual = 0;
+
+            for (let card of tarjetas) {
+                const idReg = card.dataset.idRegistro;
+
+                if (card.classList.contains('para-borrar-registro')) {
+                    if(idReg && idReg !== "nuevo" && idReg !== "") idsParaBorrar.push(idReg);
+                    continue;
+                }
+
+                const tratamiento = card.querySelector('.inv-tratamiento').value;
+                const nombre = card.querySelector('.inv-nombre').value.trim();
+                const apellidos = card.querySelector('.inv-apellidos').value.trim();
+                const dni = card.querySelector('.inv-dni').value.trim().toUpperCase();
+                const fechaNac = card.querySelector('.inv-fecha-nacimiento').value;
+                const parentesco = card.querySelector('.inv-parentesco').value;
+                const alergiasAcomp = card.querySelector('.inv-alergias').value.trim();
+
+                if (!tratamiento && !nombre && !apellidos && !dni && !fechaNac && !parentesco && !alergiasAcomp) {
+                    continue;
+                }
+
+                indexVisual++;
+
+                if (!tratamiento || !nombre || !apellidos || !dni || !fechaNac || !parentesco) {
+                    Swal.fire('Atención', `Por favor, completa todos los campos obligatorios del Acompañante ${indexVisual}.`, 'warning');
+                    return;
+                }
+
+                if (!validarDocumentoIdentidad(dni)) {
+                    Swal.fire('Documento Incorrecto', `El DNI o Pasaporte del Acompañante ${indexVisual} no es válido.`, 'error');
+                    return;
+                }
+
+                const estructuraAcompanante = {
+                    titular_dni: usuarioDni,
+                    nombre: nombre,
+                    apellidos: apellidos,
+                    dni: dni,
+                    parentesco: parentesco,
+                    tratamiento: tratamiento,
+                    fecha_nacimiento: fechaNac,
+                    alergias: alergiasAcomp
+                };
+
+                if (idReg && idReg !== "nuevo" && idReg !== "") {
+                    estructuraAcompanante.id = idReg;
+                }
+
+                listaParaUpsert.push(estructuraAcompanante);
+            }
+
+            if (listaParaUpsert.length > 2) {
+                Swal.fire('Límite excedido', 'Solo puedes registrar un máximo de 2 acompañantes.', 'error');
+                return;
+            }
+
+            Swal.fire({ title: 'Sincronizando con el servidor...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+            try {
+                // 1. Guardar o actualizar la asistencia del titular
+                const datosTitularCena = {
+                    titular_dni: usuarioDni,
+                    asistencia: asistenciaTitular,
+                    alergias: alergiasTitular
+                };
+                const { error: upsertTitularError } = await _supabase
+                    .from('titulares_cena')
+                    .upsert(datosTitularCena, { onConflict: 'titular_dni' });
+                
+                if (upsertTitularError) throw upsertTitularError;
+
+                // 2. Borrar acompañantes eliminados
+                if (idsParaBorrar.length > 0) {
+                    const { error: deleteError } = await _supabase
+                        .from('invitados_cena')
+                        .delete()
+                        .in('id', idsParaBorrar);
+                    
+                    if (deleteError) throw deleteError;
+                }
+
+                // 3. Guardar o actualizar acompañantes de la cena
+                if (listaParaUpsert.length > 0) {
+                    const { error: upsertError } = await _supabase
+                        .from('invitados_cena')
+                        .upsert(listaParaUpsert);
+                    
+                    if (upsertError) throw upsertError;
+                }
+
+                Swal.fire({
+                    title: '¡Guardado con éxito!',
+                    text: 'Tus datos y los de tus acompañantes para la cena se han guardado correctamente.',
+                    icon: 'success',
+                    confirmButtonColor: '#4f46e5'
+                }).then(async () => {
+                    await cargarDatosCenaExistentes();
+                });
+
+            } catch (e) {
+                console.error(e);
+                Swal.fire('Error de sincronización', 'No se ha podido procesar la solicitud en Supabase. Comprueba que las tablas "titulares_cena" e "invitados_cena" están creadas.', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
