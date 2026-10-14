@@ -37,7 +37,7 @@
                 <span class="text-xs uppercase font-bold text-indigo-500 tracking-wider">Titular Autorizado</span>
                 <h2 id="nombre-titular" class="text-xl font-bold text-gray-800">Cargando...</h2>
                 <p class="text-xs text-gray-600 mt-2 font-medium leading-relaxed">
-                    Indica si asistirás y añade los datos de tus acompañantes junto con sus alergias e intolerancias para la cena. (Dispones de hasta 2 invitaciones).
+                    Indica tu asistencia y añade los datos de tus acompañantes junto con las alergias e intolerancias para la cena.
                 </p>
             </div>
 
@@ -100,6 +100,7 @@
         
         let _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let usuarioDni = "";
+        let titularNombreCompleto = "";
         let contadorIndicesDinamicos = 0;
 
         function validarDocumentoIdentidad(documento) {
@@ -156,7 +157,8 @@
                 }
 
                 usuarioDni = inputDni;
-                document.getElementById('nombre-titular').innerText = titular["NOMBRE COMPLETO"];
+                titularNombreCompleto = titular["NOMBRE COMPLETO"];
+                document.getElementById('nombre-titular').innerText = titularNombreCompleto;
                 
                 await cargarDatosCenaExistentes();
 
@@ -171,36 +173,29 @@
         }
 
         async function cargarDatosCenaExistentes() {
-            // 1. Cargamos la asistencia general del titular
-            const { data: titularCena } = await _supabase
-                .from('titulares_cena')
-                .select('*')
-                .eq('titular_dni', usuarioDni)
-                .maybeSingle();
-
-            if (titularCena) {
-                document.getElementById('asistencia-titular').value = titularCena.asistencia || 'SI';
-                document.getElementById('alergias-titular').value = titularCena.alergias || '';
-                document.getElementById('check-lopd').checked = true;
-            }
-
-            // 2. Cargamos los acompañantes para la cena
             const container = document.getElementById('lista-acompanantes-cena');
             container.innerHTML = "";
             contadorIndicesDinamicos = 0;
 
-            const { data: acompanantes } = await _supabase
-                .from('invitados_cena')
+            // Cargamos todos los registros de este titular en la tabla 'cena'
+            const { data: registros } = await _supabase
+                .from('cena')
                 .select('*')
                 .eq('titular_dni', usuarioDni)
                 .order('id', { ascending: true });
 
-            if (acompanantes && acompanantes.length > 0) {
-                acompanantes.forEach(inv => {
-                    crearTarjetaAcompananteEnPantalla(inv);
+            if (registros && registros.length > 0) {
+                document.getElementById('check-lopd').checked = true;
+
+                registros.forEach(reg => {
+                    if (reg.tipo === 'Titular') {
+                        document.getElementById('asistencia-titular').value = reg.asistencia || 'SI';
+                        document.getElementById('alergias-titular').value = reg.alergias || '';
+                    } else if (reg.tipo === 'Acompañante') {
+                        crearTarjetaAcompananteEnPantalla(reg);
+                    }
                 });
             } else {
-                // Por defecto dejamos una o ninguna, según prefieras
                 crearTarjetaAcompananteCenaVacia();
             }
 
@@ -281,16 +276,12 @@
 
         function eliminarTarjetaAcompanante(btn) {
             const card = btn.closest('.tarjeta-dinamica');
-            if(card.dataset.idRegistro === "nuevo" || card.dataset.idRegistro === "") {
-                card.remove();
-            } else {
-                card.classList.add('hidden', 'para-borrar-registro');
-            }
+            card.remove();
             reordenarTitulosVisuales();
         }
 
         function reordenarTitulosVisuales() {
-            const tarjetasVisibles = document.querySelectorAll('.tarjeta-dinamica:not(.para-borrar-registro)');
+            const tarjetasVisibles = document.querySelectorAll('.tarjeta-dinamica');
             let contador = 1;
 
             tarjetasVisibles.forEach((card) => {
@@ -315,18 +306,10 @@
             const alergiasTitular = document.getElementById('alergias-titular').value.trim();
 
             const tarjetas = document.querySelectorAll('.tarjeta-dinamica');
-            const listaParaUpsert = [];
-            const idsParaBorrar = [];
+            const listaNuevosRegistros = [];
             let indexVisual = 0;
 
             for (let card of tarjetas) {
-                const idReg = card.dataset.idRegistro;
-
-                if (card.classList.contains('para-borrar-registro')) {
-                    if(idReg && idReg !== "nuevo" && idReg !== "") idsParaBorrar.push(idReg);
-                    continue;
-                }
-
                 const tratamiento = card.querySelector('.inv-tratamiento').value;
                 const nombre = card.querySelector('.inv-nombre').value.trim();
                 const apellidos = card.querySelector('.inv-apellidos').value.trim();
@@ -351,25 +334,22 @@
                     return;
                 }
 
-                const estructuraAcompanante = {
+                // Estructura del acompañante para la tabla única
+                listaNuevosRegistros.push({
                     titular_dni: usuarioDni,
+                    tipo: 'Acompañante',
+                    asistencia: null,
+                    tratamiento: tratamiento,
                     nombre: nombre,
                     apellidos: apellidos,
                     dni: dni,
                     parentesco: parentesco,
-                    tratamiento: tratamiento,
                     fecha_nacimiento: fechaNac,
                     alergias: alergiasAcomp
-                };
-
-                if (idReg && idReg !== "nuevo" && idReg !== "") {
-                    estructuraAcompanante.id = idReg;
-                }
-
-                listaParaUpsert.push(estructuraAcompanante);
+                });
             }
 
-            if (listaParaUpsert.length > 2) {
+            if (listaNuevosRegistros.length > 2) {
                 Swal.fire('Límite excedido', 'Solo puedes registrar un máximo de 2 acompañantes.', 'error');
                 return;
             }
@@ -377,40 +357,46 @@
             Swal.fire({ title: 'Sincronizando con el servidor...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
 
             try {
-                // 1. Guardar o actualizar la asistencia del titular
-                const datosTitularCena = {
+                // 1. Borramos todos los registros anteriores de este titular en la tabla 'cena' para refrescar limpio
+                const { error: deleteError } = await _supabase
+                    .from('cena')
+                    .delete()
+                    .eq('titular_dni', usuarioDni);
+                
+                if (deleteError) throw deleteError;
+
+                // 2. Preparamos el registro del propio titular
+                // Extraemos nombre y apellidos del titular guardado o usando un desglose básico
+                const partesNombre = titularNombreCompleto.trim().split(' ');
+                const nombreTitular = partesNombre[0] || "";
+                const apellidosTitular = partesNombre.slice(1).join(' ') || "";
+
+                const registroTitular = {
                     titular_dni: usuarioDni,
+                    tipo: 'Titular',
                     asistencia: asistenciaTitular,
+                    tratamiento: 'Sr. D.',
+                    nombre: nombreTitular,
+                    apellidos: apellidosTitular,
+                    dni: usuarioDni,
+                    parentesco: 'Titular',
+                    fecha_nacimiento: null,
                     alergias: alergiasTitular
                 };
-                const { error: upsertTitularError } = await _supabase
-                    .from('titulares_cena')
-                    .upsert(datosTitularCena, { onConflict: 'titular_dni' });
+
+                // Juntamos el titular y sus acompañantes en un solo array
+                const registrosFinales = [registroTitular, ...listaNuevosRegistros];
+
+                // 3. Insertamos todo de golpe en la tabla única 'cena'
+                const { error: insertError } = await _supabase
+                    .from('cena')
+                    .insert(registrosFinales);
                 
-                if (upsertTitularError) throw upsertTitularError;
-
-                // 2. Borrar acompañantes eliminados
-                if (idsParaBorrar.length > 0) {
-                    const { error: deleteError } = await _supabase
-                        .from('invitados_cena')
-                        .delete()
-                        .in('id', idsParaBorrar);
-                    
-                    if (deleteError) throw deleteError;
-                }
-
-                // 3. Guardar o actualizar acompañantes de la cena
-                if (listaParaUpsert.length > 0) {
-                    const { error: upsertError } = await _supabase
-                        .from('invitados_cena')
-                        .upsert(listaParaUpsert);
-                    
-                    if (upsertError) throw upsertError;
-                }
+                if (insertError) throw insertError;
 
                 Swal.fire({
                     title: '¡Guardado con éxito!',
-                    text: 'Tus datos y los de tus acompañantes para la cena se han guardado correctamente.',
+                    text: 'Tus datos y los de tus acompañantes para la cena se han registrado correctamente en la base de datos.',
                     icon: 'success',
                     confirmButtonColor: '#4f46e5'
                 }).then(async () => {
@@ -419,7 +405,7 @@
 
             } catch (e) {
                 console.error(e);
-                Swal.fire('Error de sincronización', 'No se ha podido procesar la solicitud en Supabase. Comprueba que las tablas "titulares_cena" e "invitados_cena" están creadas.', 'error');
+                Swal.fire('Error de sincronización', 'No se ha podido procesar la solicitud en Supabase.', 'error');
             }
         }
     </script>
