@@ -20,11 +20,11 @@
         <div id="pantalla-login" class="p-6 flex-grow flex flex-col justify-center items-center">
             <div class="w-full space-y-4">
                 <div class="text-center mb-6">
-                    <p class="text-gray-600 font-medium">Introduce tu DNI/NIE para acceder a tus invitaciones</p>
+                    <p class="text-gray-600 font-medium">Introduce tu documento de identidad para acceder a tus invitaciones</p>
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tu Documento de Identidad</label>
-                    <input type="text" id="login-dni" placeholder="Ej: 12345678Z" class="w-full p-4 border-2 border-gray-300 rounded-xl text-lg font-semibold uppercase focus:border-indigo-500 focus:outline-none">
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tu Documento</label>
+                    <input type="text" id="login-dni" placeholder="Ej: 12345678Z o Pasaporte" class="w-full p-4 border-2 border-gray-300 rounded-xl text-lg font-semibold uppercase focus:border-indigo-500 focus:outline-none">
                 </div>
                 <button onclick="verificarAcceso()" class="w-full bg-indigo-600 text-white font-bold p-4 rounded-xl shadow-md text-lg">
                     Acceder al Formulario
@@ -97,43 +97,12 @@
         let usuarioDni = "";
         let contadorIndicesDinamicos = 0;
 
-        function validarDocumentoIdentidad(documento) {
-            const regexEspañol = /^[XYZ\d]\d{7}[A-Z]$/i;
-            if (regexEspañol.test(documento)) {
-                let stringDni = documento.toUpperCase();
-                stringDni = stringDni
-                    .replace(/^X/, '0')
-                    .replace(/^Y/, '1')
-                    .replace(/^Z/, '2');
-
-                const numero = parseInt(stringDni.substr(0, 8), 10);
-                const letraIntroducida = stringDni.substr(8, 1);
-                const letrasValidas = "TRWAGMYFPDXBNJZSQVHLCKE";
-                const letraCorrecta = letrasValidas.charAt(numero % 23);
-
-                return letraIntroducida === letraCorrecta;
-            }
-
-            const regexExtranjero = /^[A-Z0-9]{6,20}$/i;
-            return regexExtranjero.test(documento);
-        }
-
         async function verificarAcceso() {
             const inputDni = document.getElementById('login-dni').value.trim().toUpperCase();
             
             if(!inputDni) {
-                Swal.fire('Atención', 'Por favor, escribe tu DNI.', 'warning');
+                Swal.fire('Atención', 'Por favor, escribe tu documento.', 'warning');
                 return;
-            }
-
-            if (!validarDocumentoIdentidad(inputDni)) {
-                Swal.fire({
-                    title: 'Documento Incorrecto',
-                    text: 'El formato del documento de identidad introducido no es válido.',
-                    icon: 'error',
-                    confirmButtonColor: '#ef4444'
-                });
-                return; 
             }
 
             Swal.fire({ title: 'Buscando tu registro...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
@@ -146,7 +115,7 @@
                     .maybeSingle();
 
                 if (error || !titular) {
-                    Swal.fire('No encontrado', 'El documento introducido es correcto, pero no consta en la lista de autorizados.', 'error');
+                    Swal.fire('No encontrado', 'El documento introducido no consta en la lista de autorizados.', 'error');
                     return;
                 }
 
@@ -224,7 +193,7 @@
 
                     <input type="text" placeholder="Nombre" class="inv-nombre w-full p-3 text-sm border rounded-lg focus:outline-none" value="${datos ? (datos.nombre || '') : ''}">
                     <input type="text" placeholder="Apellidos" class="inv-apellidos w-full p-3 text-sm border rounded-lg focus:outline-none" value="${datos ? (datos.apellidos || '') : ''}">
-                    <input type="text" placeholder="DNI, NIE o Pasaporte" class="inv-dni w-full p-3 text-sm border rounded-lg uppercase focus:outline-none" value="${datos ? (datos.dni || '') : ''}">
+                    <input type="text" placeholder="DNI, NIE, Pasaporte o Identificador" class="inv-dni w-full p-3 text-sm border rounded-lg uppercase focus:outline-none" value="${datos ? (datos.dni || '') : ''}">
                     
                     <div>
                         <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Fecha de Nacimiento</label>
@@ -338,11 +307,6 @@
 
                 if (!tratamiento || !nombre || !apellidos || !dni || !fechaNac || !parentesco) {
                     Swal.fire('Atención', `Por favor, completa todos los campos obligatorios del Acompañante ${indexVisual}.`, 'warning');
-                    return;
-                }
-
-                if (!validarDocumentoIdentidad(dni)) {
-                    Swal.fire('Documento Incorrecto', `El DNI o Pasaporte del Acompañante ${indexVisual} no tiene un formato válido.`, 'error');
                     return;
                 }
 
