@@ -26,7 +26,8 @@
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tu DNI</label>
                     <input type="text" id="login-dni" placeholder="Ej: 12345678Z" class="w-full p-4 border-2 border-gray-300 rounded-xl text-lg font-semibold uppercase focus:border-indigo-500 focus:outline-none">
                 </div>
-                <button onclick="verificarAcceso()" class="w-full bg-indigo-600 text-white font-bold p-4 rounded-xl shadow-md text-lg">
+                <!-- Añadido type="button" para evitar conflictos de envío y evento keypress para Enter -->
+                <button type="button" onclick="verificarAcceso()" class="w-full bg-indigo-600 text-white font-bold p-4 rounded-xl shadow-md text-lg hover:bg-indigo-700 transition-colors">
                     Acceder al Formulario
                 </button>
             </div>
@@ -78,7 +79,7 @@
                     </div>
                 </div>
 
-                <button type="submit" class="w-full bg-green-600 text-white font-bold p-4 rounded-xl shadow-lg text-lg">
+                <button type="submit" class="w-full bg-green-600 text-white font-bold p-4 rounded-xl shadow-lg text-lg hover:bg-green-700 transition-colors">
                     Guardar y Confirmar Lista
                 </button>
             </form>
@@ -97,27 +98,12 @@
         let usuarioDni = "";
         let contadorIndicesDinamicos = 0;
 
-        // Validación de DNI/NIE exclusiva para el acceso del titular
-        function validarDocumentoIdentidad(documento) {
-            const regexEspañol = /^[XYZ\d]\d{7}[A-Z]$/i;
-            if (regexEspañol.test(documento)) {
-                let stringDni = documento.toUpperCase();
-                stringDni = stringDni
-                    .replace(/^X/, '0')
-                    .replace(/^Y/, '1')
-                    .replace(/^Z/, '2');
-
-                const numero = parseInt(stringDni.substr(0, 8), 10);
-                const letraIntroducida = stringDni.substr(8, 1);
-                const letrasValidas = "TRWAGMYFPDXBNJZSQVHLCKE";
-                const letraCorrecta = letrasValidas.charAt(numero % 23);
-
-                return letraIntroducida === letraCorrecta;
+        // Permitir pulsar Enter en el input de DNI
+        document.getElementById('login-dni').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                verificarAcceso();
             }
-
-            const regexExtranjero = /^[A-Z0-9]{6,20}$/i;
-            return regexExtranjero.test(documento);
-        }
+        });
 
         async function verificarAcceso() {
             const inputDni = document.getElementById('login-dni').value.trim().toUpperCase();
@@ -125,16 +111,6 @@
             if(!inputDni) {
                 Swal.fire('Atención', 'Por favor, escribe tu DNI.', 'warning');
                 return;
-            }
-
-            if (!validarDocumentoIdentidad(inputDni)) {
-                Swal.fire({
-                    title: 'DNI Incorrecto',
-                    text: 'El formato del DNI introducido no es válido.',
-                    icon: 'error',
-                    confirmButtonColor: '#ef4444'
-                });
-                return; 
             }
 
             Swal.fire({ title: 'Buscando tu registro...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
@@ -146,8 +122,14 @@
                     .eq('DNI', inputDni)
                     .maybeSingle();
 
-                if (error || !titular) {
-                    Swal.fire('No encontrado', 'El DNI introducido es correcto, pero no consta en la lista de autorizados.', 'error');
+                if (error) {
+                    console.error("Error de Supabase:", error);
+                    Swal.fire('Error', 'Error en la base de datos: ' + error.message, 'error');
+                    return;
+                }
+
+                if (!titular) {
+                    Swal.fire('No encontrado', 'El DNI introducido no consta en la lista de autorizados.', 'error');
                     return;
                 }
 
@@ -161,7 +143,7 @@
                 Swal.close();
 
             } catch (err) {
-                console.error(err);
+                console.error("Excepción en acceso:", err);
                 Swal.fire('Error', 'Hubo un problema al conectar con el servidor.', 'error');
             }
         }
@@ -171,11 +153,15 @@
             container.innerHTML = "";
             contadorIndicesDinamicos = 0;
 
-            const { data: existentes } = await _supabase
+            const { data: existentes, error } = await _supabase
                 .from('invitados')
                 .select('*')
                 .eq('titular_dni', usuarioDni)
                 .order('id', { ascending: true });
+
+            if (error) {
+                console.error("Error cargando invitados:", error);
+            }
 
             if (existentes && existentes.length > 0) {
                 const algunDiscapacitado = existentes.some(inv => inv.zona_discapacidad === true);
@@ -218,4 +204,193 @@
                 
                 <div class="capa-datos-familiares grid grid-cols-1 gap-2">
                     <select class="inv-tratamiento w-full p-3 text-sm border rounded-lg bg-white focus:outline-none text-gray-500 font-medium">
-                        <option value="" disabled ${tratamientoActual === "" ?
+                        <option value="" disabled ${tratamientoActual === "" ? "selected" : ""}>Tratamiento</option>
+                        <option value="Sr. D." ${tratamientoActual === 'Sr. D.' ? 'selected' : ''}>Sr. D.</option>
+                        <option value="Sra. Dª." ${tratamientoActual === 'Sra. Dª.' ? 'selected' : ''}>Sra. Dª.</option>
+                    </select>
+
+                    <input type="text" placeholder="Nombre" class="inv-nombre w-full p-3 text-sm border rounded-lg focus:outline-none" value="${datos ? (datos.nombre || '') : ''}">
+                    <input type="text" placeholder="Apellidos" class="inv-apellidos w-full p-3 text-sm border rounded-lg focus:outline-none" value="${datos ? (datos.apellidos || '') : ''}">
+                    <input type="text" placeholder="DNI, Pasaporte o Identificador" class="inv-dni w-full p-3 text-sm border rounded-lg uppercase focus:outline-none" value="${datos ? (datos.dni || '') : ''}">
+                    
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Fecha de Nacimiento</label>
+                        <input type="date" class="inv-fecha-nacimiento w-full p-3 text-sm border rounded-lg bg-white focus:outline-none text-gray-700" value="${datos ? (datos.fecha_nacimiento || '') : ''}">
+                    </div>
+
+                    <select class="inv-parentesco w-full p-3 text-sm border rounded-lg bg-white focus:outline-none">
+                        <option value="" disabled ${parentescoActual === "" ? "selected" : ""}>Selecciona parentesco</option>
+                        <option value="Pareja" ${parentescoActual === 'Pareja' ? 'selected' : ''}>Pareja</option>
+                        <option value="Hijo/a" ${parentescoActual === 'Hijo/a' ? 'selected' : ''}>Hijo/a</option>
+                        <option value="Padre/Madre" ${parentescoActual === 'Padre/Madre' ? 'selected' : ''}>Padre/Madre</option>
+                        <option value="Hermano/a" ${parentescoActual === 'Hermano/a' ? 'selected' : ''}>Hermano/a</option>
+                        <option value="Otros" ${parentescoActual === 'Otros' ? 'selected' : ''}>Otro</option>
+                    </select>
+
+                    <div class="contenedor-observaciones hidden pt-2 border-t border-indigo-200 mt-2">
+                        <label class="block text-[11px] font-bold text-indigo-700 uppercase tracking-wider mb-1 ml-1">⚠️ Invitación Extra / Cedida</label>
+                        <input type="text" placeholder="Ej: Cedida por Alumno [Nombre y DNI]" class="inv-observaciones w-full p-3 text-sm border-2 border-indigo-300 rounded-lg focus:outline-none bg-indigo-50/50 text-gray-800 font-medium" value="${observacionesActual}">
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(card);
+            
+            const selectEl = card.querySelector('.inv-tratamiento');
+            selectEl.addEventListener('change', function() {
+                this.classList.remove('text-gray-500');
+                this.classList.add('text-gray-800');
+            });
+            if(tratamientoActual !== "") {
+                selectEl.classList.remove('text-gray-500');
+                selectEl.classList.add('text-gray-800');
+            }
+
+            reordenarTitulosVisuales();
+        }
+
+        function eliminarTarjetaAcompanante(btn) {
+            const card = btn.closest('.tarjeta-dinamica');
+            if(card.dataset.idRegistro === "nuevo" || card.dataset.idRegistro === "") {
+                card.remove();
+            } else {
+                card.classList.add('hidden', 'para-borrar-registro');
+            }
+            reordenarTitulosVisuales();
+        }
+
+        function reordenarTitulosVisuales() {
+            const tarjetasVisibles = document.querySelectorAll('.tarjeta-dinamica:not(.para-borrar-registro)');
+            let contador = 1;
+
+            tarjetasVisibles.forEach((card) => {
+                const tituloSpan = card.querySelector('.titulo-tarjeta-prioridad');
+                const contenedorObs = card.querySelector('.contenedor-observaciones');
+
+                if (tituloSpan) {
+                    tituloSpan.innerText = `Acompañante ${contador}`;
+                }
+
+                if (contenedorObs) {
+                    if (contador > 2) {
+                        contenedorObs.classList.remove('hidden');
+                    } else {
+                        contenedorObs.classList.add('hidden');
+                        const inputObs = card.querySelector('.inv-observaciones');
+                        if(inputObs) inputObs.value = "";
+                    }
+                }
+                contador++;
+            });
+        }
+
+        async function guardarDatos(event) {
+            event.preventDefault();
+
+            const checkLopd = document.getElementById('check-lopd');
+            if (!checkLopd.checked) {
+                Swal.fire('Requisito Legal', 'Para enviar el formulario debes aceptar la cláusula de protección de datos.', 'warning');
+                return;
+            }
+
+            const requiereZonaAdaptadaGrupo = document.getElementById('check-discapacidad').checked;
+            const tarjetas = document.querySelectorAll('.tarjeta-dinamica');
+            const listaParaUpsert = [];
+            const idsParaBorrar = [];
+            let indexVisual = 0;
+
+            for (let card of tarjetas) {
+                const idReg = card.dataset.idRegistro;
+
+                if (card.classList.contains('para-borrar-registro')) {
+                    if(idReg && idReg !== "nuevo" && idReg !== "") idsParaBorrar.push(idReg);
+                    continue;
+                }
+
+                const tratamiento = card.querySelector('.inv-tratamiento').value;
+                const nombre = card.querySelector('.inv-nombre').value.trim();
+                const apellidos = card.querySelector('.inv-apellidos').value.trim();
+                const dni = card.querySelector('.inv-dni').value.trim().toUpperCase();
+                const fechaNac = card.querySelector('.inv-fecha-nacimiento').value;
+                const parentesco = card.querySelector('.inv-parentesco').value;
+                const inputObs = card.querySelector('.inv-observaciones');
+                const observaciones = inputObs ? inputObs.value.trim() : "";
+
+                if (!tratamiento && !nombre && !apellidos && !dni && !fechaNac && !parentesco) {
+                    continue;
+                }
+
+                indexVisual++;
+
+                if (!tratamiento || !nombre || !apellidos || !dni || !fechaNac || !parentesco) {
+                    Swal.fire('Atención', `Por favor, completa todos los campos obligatorios del Acompañante ${indexVisual}.`, 'warning');
+                    return;
+                }
+
+                if (indexVisual > 2 && !observaciones) {
+                    Swal.fire('Observación requerida', `Al superar las 2 invitaciones estándar, el Acompañante ${indexVisual} debe indicar obligatoriamente en las observaciones quién le cede la invitación (Nombre y DNI).`, 'warning');
+                    return;
+                }
+
+                const estructuraAcompanante = {
+                    titular_dni: usuarioDni,
+                    nombre: nombre,
+                    apellidos: apellidos,
+                    dni: dni,
+                    parentesco: parentesco,
+                    tratamiento: tratamiento,
+                    fecha_nacimiento: fechaNac,
+                    zona_discapacidad: requiereZonaAdaptadaGrupo,
+                    observaciones: observaciones
+                };
+
+                if (idReg && idReg !== "nuevo" && idReg !== "") {
+                    estructuraAcompanante.id = idReg;
+                }
+
+                listaParaUpsert.push(estructuraAcompanante);
+            }
+
+            if (listaParaUpsert.length === 0 && idsParaBorrar.length === 0) {
+                Swal.fire('Formulario Vacío', 'Introduce al menos los datos de un acompañante para guardar.', 'info');
+                return;
+            }
+
+            Swal.fire({ title: 'Sincronizando con el servidor...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+            try {
+                if (idsParaBorrar.length > 0) {
+                    const { error: deleteError } = await _supabase
+                        .from('invitados')
+                        .delete()
+                        .in('id', idsParaBorrar);
+                    
+                    if (deleteError) throw deleteError;
+                }
+
+                if (listaParaUpsert.length > 0) {
+                    const { error: upsertError } = await _supabase
+                        .from('invitados')
+                        .upsert(listaParaUpsert);
+                    
+                    if (upsertError) throw upsertError;
+                }
+
+                Swal.fire({
+                    title: '¡Guardado con éxito!',
+                    text: 'La lista de acompañantes se ha actualizado de forma correcta en la base de datos.',
+                    icon: 'success',
+                    confirmButtonColor: '#4f46e5'
+                }).then(async () => {
+                    document.getElementById('lista-invitados').innerHTML = "";
+                    await cargarInvitadosExistentes();
+                });
+
+            } catch (e) {
+                console.error(e);
+                Swal.fire('Error de sincronización', 'No se ha podido procesar la solicitud en Supabase.', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
