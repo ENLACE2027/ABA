@@ -186,7 +186,7 @@
             
             contadorIndicesDinamicos++;
             card.className = "p-4 rounded-xl border-2 shadow-sm relative space-y-3 tarjeta-dinamica border-gray-200 bg-gray-50/50";
-            card.dataset.idRegistro = datos ? datos.id : ""; // Si es nuevo, dejamos vacío en lugar de "nuevo" para evitar conflictos de tipo en Supabase
+            card.dataset.idRegistro = datos ? datos.id : ""; 
 
             const tratamientoActual = datos?.tratamiento || "";
             const parentescoActual = datos?.parentesco || "";
@@ -345,7 +345,7 @@
                     observaciones: observaciones
                 };
 
-                // Si ya tiene ID en la base de datos, lo incluimos para que haga update en lugar de insert duplicado
+                // SOLO se añade el id si el registro ya existe en la base de datos (para hacer update)
                 if (idReg && idReg !== "") {
                     estructuraAcompanante.id = parseInt(idReg, 10) || idReg;
                 }
