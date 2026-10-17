@@ -1,4 +1,320 @@
-async function guardarDatos(event) {
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro de Invitados - ABA</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen flex flex-col justify-between">
+
+    <div class="max-w-md w-full mx-auto bg-white min-h-screen shadow-md flex flex-col justify-between">
+        
+        <header class="bg-indigo-700 text-white p-6 text-center shadow-lg">
+            <h1 class="text-2xl font-bold tracking-wide">ABA</h1>
+            <p class="text-indigo-200 text-sm mt-1">Confirmación y Gestión de Invitados</p>
+        </header>
+
+        <div id="pantalla-login" class="p-6 flex-grow flex flex-col justify-center items-center">
+            <div class="w-full space-y-4">
+                <div class="text-center mb-6">
+                    <p class="text-gray-600 font-medium">Introduce tu DNI para acceder a tus invitaciones</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tu DNI</label>
+                    <input type="text" id="login-dni" placeholder="Ej: 12345678Z" class="w-full p-4 border-2 border-gray-300 rounded-xl text-lg font-semibold uppercase focus:border-indigo-500 focus:outline-none">
+                </div>
+                <button type="button" onclick="verificarAcceso()" class="w-full bg-indigo-600 text-white font-bold p-4 rounded-xl shadow-md text-lg hover:bg-indigo-700 transition-colors">
+                    Acceder al Formulario
+                </button>
+            </div>
+        </div>
+
+        <div id="pantalla-formulario" class="p-6 flex-grow hidden space-y-6">
+            <div class="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                <span class="text-xs uppercase font-bold text-indigo-500 tracking-wider">Titular Autorizado</span>
+                <h2 id="nombre-titular" class="text-xl font-bold text-gray-800">Cargando...</h2>
+                <p class="text-xs text-gray-600 mt-2 font-medium leading-relaxed">
+                    Añade a los miembros de tu unidad familiar y acompañantes que asistirán contigo al evento (dispones de 2 invitaciones estándar; a partir de la 3ª indica el origen de la cesión. Si tu unidad familiar incluye hijos menores que superen este cupo, regístralos igualmente para garantizar su acceso conjunto al acto).
+                </p>
+            </div>
+
+            <form id="form-invitados" onsubmit="guardarDatos(event)" class="space-y-6">
+                
+                <div id="lista-invitados" class="space-y-4"></div>
+
+                <div class="flex justify-center pt-2">
+                    <button type="button" onclick="crearTarjetaInvitadoVacia()" class="w-full border-2 border-dashed border-indigo-400 text-indigo-800 bg-indigo-50/60 font-bold p-3 rounded-xl flex items-center justify-center gap-2 hover:bg-indigo-100 transition-colors text-sm shadow-sm">
+                        <span>➕ Añadir Acompañante / Familiar</span>
+                    </button>
+                </div>
+
+                <div class="bg-blue-50 p-4 rounded-xl border border-blue-200 mt-4">
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="check-discapacidad" type="checkbox" class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                        </div>
+                        <div class="ml-3 text-xs">
+                            <label for="check-discapacidad" class="font-bold text-blue-950 cursor-pointer select-none">
+                                ¿Algún miembro del grupo requiere acceso a la zona habilitada para personal con discapacidad/movilidad reducida?
+                            </label>
+                            <p class="text-blue-700 text-[11px] mt-0.5">Nota: Al marcarlo, la condición se guardará de manera automática para toda la unidad familiar que registres.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input id="check-lopd" type="checkbox" class="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer">
+                        </div>
+                        <div class="ml-3 text-xs">
+                            <label for="check-lopd" class="font-medium text-gray-700 cursor-pointer select-none">
+                                Acepto el tratamiento de los datos facilitados exclusivamente para la gestión de confirmaciones, control de accesos y organización de ABA de conformidad con la LOPDGDD y el RGPD.
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 text-white font-bold p-4 rounded-xl shadow-lg text-lg hover:bg-green-700 transition-colors">
+                    Guardar y Confirmar Lista
+                </button>
+            </form>
+        </div>
+
+        <footer class="p-4 bg-gray-50 text-center border-t border-gray-200">
+            <p class="text-xs text-gray-400 font-medium">© 2026 Organización ABA</p>
+        </footer>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://vvgxdneixtrtainoaxzn.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ2Z3hkbmVpeHRydGFpbm9heHpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5NTQ3NzYsImV4cCI6MjA5NjUzMDc3Nn0.uVpF67WDU4jBhfYcBao-YUFVDt0bdIXPgbWv2AqnYSM";
+        
+        let _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let usuarioDni = "";
+        let contadorIndicesDinamicos = 0;
+
+        document.getElementById('login-dni').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                verificarAcceso();
+            }
+        });
+
+        function validarDocumentoIdentidad(documento) {
+            const regexEspañol = /^[XYZ\d]\d{7}[A-Z]$/i;
+            if (regexEspañol.test(documento)) {
+                let stringDni = documento.toUpperCase();
+                stringDni = stringDni
+                    .replace(/^X/, '0')
+                    .replace(/^Y/, '1')
+                    .replace(/^Z/, '2');
+
+                const numero = parseInt(stringDni.substr(0, 8), 10);
+                const letraIntroducida = stringDni.substr(8, 1);
+                const letrasValidas = "TRWAGMYFPDXBNJZSQVHLCKE";
+                const letraCorrecta = letrasValidas.charAt(numero % 23);
+
+                return letraIntroducida === letraCorrecta;
+            }
+
+            const regexExtranjero = /^[A-Z0-9]{6,20}$/i;
+            return regexExtranjero.test(documento);
+        }
+
+        async function verificarAcceso() {
+            const inputDni = document.getElementById('login-dni').value.trim().toUpperCase();
+            
+            if(!inputDni) {
+                Swal.fire('Atención', 'Por favor, escribe tu DNI.', 'warning');
+                return;
+            }
+
+            if (!validarDocumentoIdentidad(inputDni)) {
+                Swal.fire({
+                    title: 'DNI Incorrecto',
+                    text: 'El formato del DNI introducido no es válido.',
+                    icon: 'error',
+                    confirmButtonColor: '#ef4444'
+                });
+                return; 
+            }
+
+            Swal.fire({ title: 'Buscando tu registro...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+
+            try {
+                const { data: titular, error } = await _supabase
+                    .from('titulares')
+                    .select('*')
+                    .eq('DNI', inputDni)
+                    .maybeSingle();
+
+                if (error) {
+                    console.error("Error de Supabase:", error);
+                    Swal.fire('Error', 'Error en la base de datos: ' + error.message, 'error');
+                    return;
+                }
+
+                if (!titular) {
+                    Swal.fire('No encontrado', 'El DNI introducido no consta en la lista de autorizados.', 'error');
+                    return;
+                }
+
+                usuarioDni = inputDni;
+                document.getElementById('nombre-titular').innerText = titular["NOMBRE COMPLETO"];
+                
+                await cargarInvitadosExistentes();
+
+                document.getElementById('pantalla-login').classList.add('hidden');
+                document.getElementById('pantalla-formulario').classList.remove('hidden');
+                Swal.close();
+
+            } catch (err) {
+                console.error("Excepción en acceso:", err);
+                Swal.fire('Error', 'Hubo un problema al conectar con el servidor.', 'error');
+            }
+        }
+
+        async function cargarInvitadosExistentes() {
+            const container = document.getElementById('lista-invitados');
+            container.innerHTML = "";
+            contadorIndicesDinamicos = 0;
+
+            const { data: existentes, error } = await _supabase
+                .from('invitados')
+                .select('*')
+                .eq('titular_dni', usuarioDni)
+                .order('id', { ascending: true });
+
+            if (error) {
+                console.error("Error cargando invitados:", error);
+            }
+
+            if (existentes && existentes.length > 0) {
+                const algunDiscapacitado = existentes.some(inv => inv.zona_discapacidad === true);
+                document.getElementById('check-discapacidad').checked = algunDiscapacitado;
+
+                existentes.forEach(inv => {
+                    crearTarjetaEnPantalla(inv);
+                });
+            } else {
+                crearTarjetaInvitadoVacia();
+                crearTarjetaInvitadoVacia();
+            }
+
+            reordenarTitulosVisuales();
+        }
+
+        function crearTarjetaInvitadoVacia() {
+            crearTarjetaEnPantalla(null);
+        }
+
+        function crearTarjetaEnPantalla(datos = null) {
+            const container = document.getElementById('lista-invitados');
+            const card = document.createElement('div');
+            
+            contadorIndicesDinamicos++;
+            card.className = "p-4 rounded-xl border-2 shadow-sm relative space-y-3 tarjeta-dinamica border-gray-200 bg-gray-50/50";
+            card.dataset.idRegistro = datos ? datos.id : ""; 
+
+            const tratamientoActual = datos?.tratamiento || "";
+            const parentescoActual = datos?.parentesco || "";
+            const observacionesActual = datos?.observaciones || "";
+
+            card.innerHTML = `
+                <div class="flex justify-between items-center border-b pb-2 mb-2 border-gray-200">
+                    <div class="flex items-center gap-2">
+                        <span class="titulo-tarjeta-prioridad text-xs uppercase font-extrabold tracking-wider text-indigo-600">Acompañante ${contadorIndicesDinamicos}</span>
+                    </div>
+                    <button type="button" onclick="eliminarTarjetaAcompanante(this)" class="text-red-500 font-bold text-xs bg-red-50 px-2 py-1 rounded-lg border border-red-200 hover:bg-red-100 transition-colors">Eliminar</button>
+                </div>
+                
+                <div class="capa-datos-familiares grid grid-cols-1 gap-2">
+                    <select class="inv-tratamiento w-full p-3 text-sm border rounded-lg bg-white focus:outline-none text-gray-500 font-medium">
+                        <option value="" disabled ${tratamientoActual === "" ? "selected" : ""}>Tratamiento</option>
+                        <option value="Sr. D." ${tratamientoActual === 'Sr. D.' ? 'selected' : ''}>Sr. D.</option>
+                        <option value="Sra. Dª." ${tratamientoActual === 'Sra. Dª.' ? 'selected' : ''}>Sra. Dª.</option>
+                    </select>
+
+                    <input type="text" placeholder="Nombre" class="inv-nombre w-full p-3 text-sm border rounded-lg focus:outline-none" value="${datos ? (datos.nombre || '') : ''}">
+                    <input type="text" placeholder="Apellidos" class="inv-apellidos w-full p-3 text-sm border rounded-lg focus:outline-none" value="${datos ? (datos.apellidos || '') : ''}">
+                    <input type="text" placeholder="DNI, Pasaporte o Identificador" class="inv-dni w-full p-3 text-sm border rounded-lg uppercase focus:outline-none" value="${datos ? (datos.dni || '') : ''}">
+                    
+                    <div>
+                        <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Fecha de Nacimiento</label>
+                        <input type="date" class="inv-fecha-nacimiento w-full p-3 text-sm border rounded-lg bg-white focus:outline-none text-gray-700" value="${datos ? (datos.fecha_nacimiento || '') : ''}">
+                    </div>
+
+                    <select class="inv-parentesco w-full p-3 text-sm border rounded-lg bg-white focus:outline-none">
+                        <option value="" disabled ${parentescoActual === "" ? "selected" : ""}>Selecciona parentesco</option>
+                        <option value="Pareja" ${parentescoActual === 'Pareja' ? 'selected' : ''}>Pareja</option>
+                        <option value="Hijo/a" ${parentescoActual === 'Hijo/a' ? 'selected' : ''}>Hijo/a</option>
+                        <option value="Padre/Madre" ${parentescoActual === 'Padre/Madre' ? 'selected' : ''}>Padre/Madre</option>
+                        <option value="Hermano/a" ${parentescoActual === 'Hermano/a' ? 'selected' : ''}>Hermano/a</option>
+                        <option value="Otros" ${parentescoActual === 'Otros' ? 'selected' : ''}>Otro</option>
+                    </select>
+
+                    <div class="contenedor-observaciones hidden pt-2 border-t border-indigo-200 mt-2">
+                        <label class="block text-[11px] font-bold text-indigo-700 uppercase tracking-wider mb-1 ml-1">⚠️ Invitación Extra / Cedida</label>
+                        <input type="text" placeholder="Ej: Cedida por Alumno [Nombre y DNI]" class="inv-observaciones w-full p-3 text-sm border-2 border-indigo-300 rounded-lg focus:outline-none bg-indigo-50/50 text-gray-800 font-medium" value="${observacionesActual}">
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(card);
+            
+            const selectEl = card.querySelector('.inv-tratamiento');
+            selectEl.addEventListener('change', function() {
+                this.classList.remove('text-gray-500');
+                this.classList.add('text-gray-800');
+            });
+            if(tratamientoActual !== "") {
+                selectEl.classList.remove('text-gray-500');
+                selectEl.classList.add('text-gray-800');
+            }
+
+            reordenarTitulosVisuales();
+        }
+
+        function eliminarTarjetaAcompanante(btn) {
+            const card = btn.closest('.tarjeta-dinamica');
+            const idReg = card.dataset.idRegistro;
+            if(!idReg || idReg === "") {
+                card.remove();
+            } else {
+                card.classList.add('hidden', 'para-borrar-registro');
+            }
+            reordenarTitulosVisuales();
+        }
+
+        function reordenarTitulosVisuales() {
+            const tarjetasVisibles = document.querySelectorAll('.tarjeta-dinamica:not(.para-borrar-registro)');
+            let contador = 1;
+
+            tarjetasVisibles.forEach((card) => {
+                const tituloSpan = card.querySelector('.titulo-tarjeta-prioridad');
+                const contenedorObs = card.querySelector('.contenedor-observaciones');
+
+                if (tituloSpan) {
+                    tituloSpan.innerText = `Acompañante ${contador}`;
+                }
+
+                if (contenedorObs) {
+                    if (contador > 2) {
+                        contenedorObs.classList.remove('hidden');
+                    } else {
+                        contenedorObs.classList.add('hidden');
+                        const inputObs = card.querySelector('.inv-observaciones');
+                        if(inputObs) inputObs.value = "";
+                    }
+                }
+                contador++;
+            });
+        }
+
+        async function guardarDatos(event) {
             event.preventDefault();
 
             const checkLopd = document.getElementById('check-lopd');
@@ -61,7 +377,6 @@ async function guardarDatos(event) {
                     observaciones: observaciones
                 };
 
-                // Si tiene ID válido, es una actualización (Update). Si no, es nuevo (Insert).
                 if (idReg && idReg !== "" && !isNaN(idReg)) {
                     estructuraAcompanante.id = parseInt(idReg, 10);
                     listaParaActualizar.push(estructuraAcompanante);
@@ -78,7 +393,6 @@ async function guardarDatos(event) {
             Swal.fire({ title: 'Sincronizando con el servidor...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
 
             try {
-                // 1. Borrar eliminados
                 if (idsParaBorrar.length > 0) {
                     const { error: deleteError } = await _supabase
                         .from('invitados')
@@ -88,7 +402,6 @@ async function guardarDatos(event) {
                     if (deleteError) throw new Error("Error al borrar: " + deleteError.message);
                 }
 
-                // 2. Insertar nuevos registros (sin enviar el campo id)
                 if (listaParaInsertar.length > 0) {
                     const { error: insertError } = await _supabase
                         .from('invitados')
@@ -97,7 +410,6 @@ async function guardarDatos(event) {
                     if (insertError) throw new Error("Error al insertar: " + insertError.message);
                 }
 
-                // 3. Actualizar registros existentes
                 for (let reg of listaParaActualizar) {
                     const { error: updateError } = await _supabase
                         .from('invitados')
@@ -122,3 +434,6 @@ async function guardarDatos(event) {
                 Swal.fire('Error de sincronización', e.message || 'No se ha podido procesar la solicitud en Supabase.', 'error');
             }
         }
+    </script>
+</body>
+</html>
