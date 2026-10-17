@@ -26,7 +26,6 @@
                     <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tu DNI</label>
                     <input type="text" id="login-dni" placeholder="Ej: 12345678Z" class="w-full p-4 border-2 border-gray-300 rounded-xl text-lg font-semibold uppercase focus:border-indigo-500 focus:outline-none">
                 </div>
-                <!-- Añadido type="button" para evitar conflictos de envío y evento keypress para Enter -->
                 <button type="button" onclick="verificarAcceso()" class="w-full bg-indigo-600 text-white font-bold p-4 rounded-xl shadow-md text-lg hover:bg-indigo-700 transition-colors">
                     Acceder al Formulario
                 </button>
@@ -98,7 +97,6 @@
         let usuarioDni = "";
         let contadorIndicesDinamicos = 0;
 
-        // Permitir pulsar Enter en el input de DNI
         document.getElementById('login-dni').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 verificarAcceso();
@@ -188,7 +186,7 @@
             
             contadorIndicesDinamicos++;
             card.className = "p-4 rounded-xl border-2 shadow-sm relative space-y-3 tarjeta-dinamica border-gray-200 bg-gray-50/50";
-            card.dataset.idRegistro = datos ? datos.id : "nuevo";
+            card.dataset.idRegistro = datos ? datos.id : ""; // Si es nuevo, dejamos vacío en lugar de "nuevo" para evitar conflictos de tipo en Supabase
 
             const tratamientoActual = datos?.tratamiento || "";
             const parentescoActual = datos?.parentesco || "";
@@ -251,7 +249,8 @@
 
         function eliminarTarjetaAcompanante(btn) {
             const card = btn.closest('.tarjeta-dinamica');
-            if(card.dataset.idRegistro === "nuevo" || card.dataset.idRegistro === "") {
+            const idReg = card.dataset.idRegistro;
+            if(!idReg || idReg === "") {
                 card.remove();
             } else {
                 card.classList.add('hidden', 'para-borrar-registro');
@@ -303,7 +302,9 @@
                 const idReg = card.dataset.idRegistro;
 
                 if (card.classList.contains('para-borrar-registro')) {
-                    if(idReg && idReg !== "nuevo" && idReg !== "") idsParaBorrar.push(idReg);
+                    if(idReg && idReg !== "") {
+                        idsParaBorrar.push(parseInt(idReg, 10) || idReg);
+                    }
                     continue;
                 }
 
@@ -339,13 +340,14 @@
                     dni: dni,
                     parentesco: parentesco,
                     tratamiento: tratamiento,
-                    fecha_nacimiento: fechaNac,
+                    fecha_nacimiento: fechaNac || null,
                     zona_discapacidad: requiereZonaAdaptadaGrupo,
                     observaciones: observaciones
                 };
 
-                if (idReg && idReg !== "nuevo" && idReg !== "") {
-                    estructuraAcompanante.id = idReg;
+                // Si ya tiene ID en la base de datos, lo incluimos para que haga update en lugar de insert duplicado
+                if (idReg && idReg !== "") {
+                    estructuraAcompanante.id = parseInt(idReg, 10) || idReg;
                 }
 
                 listaParaUpsert.push(estructuraAcompanante);
@@ -365,7 +367,9 @@
                         .delete()
                         .in('id', idsParaBorrar);
                     
-                    if (deleteError) throw deleteError;
+                    if (deleteError) {
+                        throw new Error("Error al borrar: " + deleteError.message);
+                    }
                 }
 
                 if (listaParaUpsert.length > 0) {
@@ -373,7 +377,9 @@
                         .from('invitados')
                         .upsert(listaParaUpsert);
                     
-                    if (upsertError) throw upsertError;
+                    if (upsertError) {
+                        throw new Error("Error al guardar: " + upsertError.message);
+                    }
                 }
 
                 Swal.fire({
@@ -387,8 +393,8 @@
                 });
 
             } catch (e) {
-                console.error(e);
-                Swal.fire('Error de sincronización', 'No se ha podido procesar la solicitud en Supabase.', 'error');
+                console.error("Detalle del error de sincronización:", e);
+                Swal.fire('Error de sincronización', e.message || 'No se ha podido procesar la solicitud en Supabase.', 'error');
             }
         }
     </script>
