@@ -37,7 +37,7 @@
                 <span class="text-xs uppercase font-bold text-rose-800 tracking-wider">Titular Autorizado</span>
                 <h2 id="nombre-titular" class="text-xl font-bold text-gray-800">Cargando...</h2>
                 <p class="text-xs text-gray-600 mt-2 font-medium leading-relaxed">
-                    Indica tu elección de segundo plato, alergias y añade los datos de tu acompañante (máximo 1). <br><br>
+                    Indica tu elección de segundo plato, alergias y añade los datos de tus acompañantes. <br><br>
                     <strong class="text-rose-900">* Rellenar el siguiente formulario solamente si quieres asistir a la cena.</strong>
                 </p>
             </div>
@@ -103,7 +103,18 @@
         let _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let usuarioDni = "";
         let titularNombreCompleto = "";
+        let titularTratamiento = "Sr. D.";
         let contadorIndicesDinamicos = 0;
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+        }
 
         function validarDocumentoIdentidad(documento) {
             const regexEspañol = /^[XYZ\d]\d{7}[A-Z]$/i;
@@ -159,7 +170,9 @@
                 }
 
                 usuarioDni = inputDni;
-                titularNombreCompleto = titular["NOMBRE COMPLETO"];
+                titularNombreCompleto = titular["NOMBRE COMPLETO"] || "";
+                if (titular["TRATAMIENTO"]) titularTratamiento = titular["TRATAMIENTO"];
+
                 document.getElementById('nombre-titular').innerText = titularNombreCompleto;
                 
                 await cargarDatosCenaExistentes();
@@ -196,19 +209,12 @@
                         crearTarjetaAcompananteEnPantalla(reg);
                     }
                 });
-            } else {
-                // Si no hay registros previos, por defecto no se añade tarjeta vacía para que decida si quiere asistir o no
             }
 
             reordenarTitulosVisuales();
         }
 
         function crearTarjetaAcompananteCenaVacia() {
-            const tarjetasVisibles = document.querySelectorAll('.tarjeta-dinamica:not(.para-borrar-registro)');
-            if (tarjetasVisibles.length >= 1) {
-                Swal.fire('Límite alcanzado', 'Solo dispones de un máximo de 1 acompañante para la cena.', 'info');
-                return;
-            }
             crearTarjetaAcompananteEnPantalla(null);
         }
 
@@ -239,12 +245,12 @@
                         <option value="Sra. Dª." ${tratamientoActual === 'Sra. Dª.' ? 'selected' : ''}>Sra. Dª.</option>
                     </select>
 
-                    <input type="text" placeholder="Nombre" class="inv-nombre w-full p-3 text-sm border rounded-lg focus:outline-none" value="${datos ? (datos.nombre || '') : ''}">
-                    <input type="text" placeholder="Apellidos" class="inv-apellidos w-full p-3 text-sm border rounded-lg focus:outline-none" value="${datos ? (datos.apellidos || '') : ''}">
+                    <input type="text" placeholder="Nombre" class="inv-nombre w-full p-3 text-sm border rounded-lg focus:outline-none" value="${escapeHtml(datos?.nombre)}">
+                    <input type="text" placeholder="Apellidos" class="inv-apellidos w-full p-3 text-sm border rounded-lg focus:outline-none" value="${escapeHtml(datos?.apellidos)}">
                     
                     <div>
                         <label class="block text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1 ml-1">Fecha de Nacimiento</label>
-                        <input type="date" class="inv-fecha-nacimiento w-full p-3 text-sm border rounded-lg bg-white focus:outline-none text-gray-700" value="${datos ? (datos.fecha_nacimiento || '') : ''}">
+                        <input type="date" class="inv-fecha-nacimiento w-full p-3 text-sm border rounded-lg bg-white focus:outline-none text-gray-700" value="${escapeHtml(datos?.fecha_nacimiento)}">
                     </div>
 
                     <select class="inv-parentesco w-full p-3 text-sm border rounded-lg bg-white focus:outline-none">
@@ -265,7 +271,7 @@
                         </select>
                     </div>
 
-                    <input type="text" placeholder="Alergias o intolerancias del acompañante" class="inv-alergias w-full p-3 text-sm border rounded-lg focus:outline-none bg-white" value="${datos ? (datos.alergias || '') : ''}">
+                    <input type="text" placeholder="Alergias o intolerancias del acompañante" class="inv-alergias w-full p-3 text-sm border rounded-lg focus:outline-none bg-white" value="${escapeHtml(datos?.alergias)}">
                 </div>
             `;
             
@@ -334,7 +340,8 @@
                 const alergiasAcomp = card.querySelector('.inv-alergias').value.trim();
 
                 if (!tratamiento && !nombre && !apellidos && !fechaNac && !parentesco && !platoAcomp && !alergiasAcomp) {
-                    continue;
+                    Swal.fire('Atención', 'Has añadido una tarjeta de acompañante vacía. Por favor, completa sus datos o pulsa "Eliminar".', 'warning');
+                    return;
                 }
 
                 indexVisual++;
@@ -347,7 +354,7 @@
                 listaNuevosRegistros.push({
                     titular_dni: usuarioDni,
                     tipo: 'Acompañante',
-                    asistencia: null,
+                    asistencia: 'SI',
                     segundo_plato: platoAcomp,
                     tratamiento: tratamiento,
                     nombre: nombre,
@@ -357,11 +364,6 @@
                     fecha_nacimiento: fechaNac,
                     alergias: alergiasAcomp
                 });
-            }
-
-            if (listaNuevosRegistros.length > 1) {
-                Swal.fire('Límite excedido', 'Solo puedes registrar un máximo de 1 acompañante.', 'error');
-                return;
             }
 
             Swal.fire({ title: 'Sincronizando con el servidor...', didOpen: () => Swal.showLoading(), allowOutsideClick: false });
@@ -379,7 +381,7 @@
                     tipo: 'Titular',
                     asistencia: 'SI',
                     segundo_plato: platoTitular,
-                    tratamiento: 'Sr. D.',
+                    tratamiento: titularTratamiento,
                     nombre: titularNombreCompleto,
                     apellidos: '', 
                     dni: usuarioDni,
